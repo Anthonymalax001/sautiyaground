@@ -2,20 +2,27 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { InfoIcon } from '../components/Icons.jsx'
 import { Footer } from '../components/SiteChrome.jsx'
 import { APP_CONFIG } from '../config/appConfig.js'
-import { fetchPollResults } from '../services/pollService.js'
+import { fetchPollResults, fetchPublicPollInfo } from '../services/pollService.js'
 
-const RESULT_POLL_INTERVAL = 10000
+const RESULT_REFRESH_INTERVAL = 10000
 
-function isValidResults(data) {
-  if (!data || !data.counts || !Number.isInteger(data.totalConfirmedVotes) || data.totalConfirmedVotes < 0) return false
-  const counts = APP_CONFIG.pollOptions.map((option) => data.counts[option])
-  if (!counts.every((count) => Number.isInteger(count) && count >= 0)) return false
-  if (counts.reduce((sum, count) => sum + count, 0) !== data.totalConfirmedVotes) return false
-  return typeof data.lastUpdatedAt === 'string' && Number.isFinite(Date.parse(data.lastUpdatedAt))
-}
+function validateResults(data) {
+  if (!data?.poll || typeof data.poll.id !== 'string' || !Array.isArray(data.results)) {
+    throw new Error('The results service returned an incomplete response.')
+  }
 
-function formatUpdatedAt(value) {
-  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
+  const options = APP_CONFIG.pollOptions.map((code) => {
+    const matches = data.results.filter((item) => item.code === code)
+    const item = matches[0]
+    if (matches.length !== 1 || !item || typeof item.id !== 'string'
+      || typeof item.label !== 'string' || !Number.isSafeInteger(item.votes) || item.votes < 0) {
+      throw new Error('The results service returned incomplete poll counts.')
+    }
+    return { id: item.id, code, label: item.label, votes: item.votes }
+  })
+
+  if (data.results.length !== options.length) throw new Error('The results service returned unexpected poll options.')
+  return { poll: data.poll, options }
 }
 
 export default function ResultsPage() {
@@ -32,15 +39,15 @@ export default function ResultsPage() {
     if (backgroundRefresh) setRefreshing(true)
     else if (!resultsRef.current) setLoading(true)
     try {
-      const data = await fetchPollResults(APP_CONFIG.pollId)
-      if (!isValidResults(data)) throw new Error('The results service returned incomplete or invalid aggregate data.')
-      resultsRef.current = data
-      setResults(data)
+      const poll = await fetchPublicPollInfo()
+      if (!poll?.id) throw new Error('No active poll is available.')
+      const response = await fetchPollResults(poll.id)
+      const confirmedResults = validateResults(response)
+      resultsRef.current = confirmedResults
+      setResults(confirmedResults)
       setError('')
-    } catch (requestError) {
-      setError(requestError?.code === 'BACKEND_NOT_CONFIGURED'
-        ? 'Live results are unavailable because the results service has not been connected yet.'
-        : 'We could not refresh the results. Try again in a moment.')
+    } catch {
+      setError('We could not load the confirmed results. Please try again in a moment.')
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -50,22 +57,21 @@ export default function ResultsPage() {
 
   useEffect(() => {
     const initialLoad = window.setTimeout(() => void loadResults(), 0)
-    const timer = window.setInterval(() => {
+    const interval = window.setInterval(() => {
       if (document.visibilityState === 'visible') void loadResults(true)
-    }, RESULT_POLL_INTERVAL)
-    const handleVisibility = () => {
+    }, RESULT_REFRESH_INTERVAL)
+    const refreshWhenVisible = () => {
       if (document.visibilityState === 'visible') void loadResults(true)
     }
-    document.addEventListener('visibilitychange', handleVisibility)
+    document.addEventListener('visibilitychange', refreshWhenVisible)
     return () => {
       window.clearTimeout(initialLoad)
-      window.clearInterval(timer)
-      document.removeEventListener('visibilitychange', handleVisibility)
+      window.clearInterval(interval)
+      document.removeEventListener('visibilitychange', refreshWhenVisible)
     }
   }, [loadResults])
 
-  const hasResults = results !== null
-  const total = results?.totalConfirmedVotes ?? 0
+  const total = results?.options.reduce((sum, option) => sum + option.votes, 0) ?? 0
 
   return (
     <>
@@ -74,7 +80,7 @@ export default function ResultsPage() {
         <section className="policy-card results-card" aria-labelledby="results-heading">
           <div className="results-card__header">
             <div>
-              <p className="hero-kicker"><span className="hero-kicker__line" /> {APP_CONFIG.pollTitle}</p>
+              <p className="hero-kicker"><span className="hero-kicker__line" /> {results?.poll.title || APP_CONFIG.pollTitle}</p>
               <h1 id="results-heading">Confirmed poll results</h1>
             </div>
             <span className="results-refresh" aria-live="polite">
@@ -83,50 +89,37 @@ export default function ResultsPage() {
             </span>
           </div>
 
-          {loading && !hasResults && (
-            <div className="results-state" role="status">
-              <span className="loading-spinner" aria-hidden="true" />
-              <p>Loading confirmed results...</p>
-            </div>
-          )}
+          {results?.poll.question && <p className="policy-lead">{results.poll.question}</p>}
 
-          {!loading && !hasResults && error && (
+          {loading && !results && <div className="results-state" role="status"><span className="loading-spinner" aria-hidden="true" /><p>Loading confirmed results...</p></div>}
+
+          {!loading && !results && error && (
             <div className="results-state results-state--error" role="alert">
               <p>{error}</p>
               <button className="secondary-button" type="button" onClick={() => void loadResults()} disabled={refreshing}>Try again</button>
             </div>
           )}
 
-          {hasResults && (
+          {results && (
             <>
-              {error && (
-                <div className="results-inline-error" role="status">
-                  <p>{error} Showing the last confirmed results received.</p>
-                  <button className="secondary-button" type="button" onClick={() => void loadResults()} disabled={refreshing}>Try again</button>
-                </div>
-              )}
-              <div className="results-total">
-                <span>Total confirmed votes</span>
-                <strong>{total.toLocaleString()}</strong>
-              </div>
-
+              {error && <div className="results-inline-error" role="status"><p>{error} Showing the last confirmed results received.</p><button className="secondary-button" type="button" onClick={() => void loadResults()} disabled={refreshing}>Try again</button></div>}
+              <div className="results-total"><span>Total confirmed votes</span><strong>{total.toLocaleString()}</strong></div>
               {total === 0 ? (
                 <div className="results-empty" role="status">
                   <p>No confirmed votes yet.</p>
-                  <span>Results will appear here after the backend verifies payments and records responses.</span>
+                  <span>Results appear after the backend verifies payment and records responses.</span>
                 </div>
               ) : (
                 <div className="results-options">
-                  {APP_CONFIG.pollOptions.map((option, index) => {
-                    const count = results.counts[option]
-                    const percentage = (count / total) * 100
+                  {results.options.map((option, index) => {
+                    const percentage = (option.votes / total) * 100
                     return (
-                      <section className="result-option" key={option} aria-labelledby={`result-${option}`}>
+                      <section className="result-option" key={option.id} aria-labelledby={`result-${option.code}`}>
                         <div className="result-option__labels">
-                          <h2 id={`result-${option}`}>{option}</h2>
-                          <div><strong>{count.toLocaleString()}</strong><span>{percentage.toFixed(1)}%</span></div>
+                          <h2 id={`result-${option.code}`}>{option.label}</h2>
+                          <div><strong>{option.votes.toLocaleString()}</strong><span>{percentage.toFixed(1)}%</span></div>
                         </div>
-                        <div className="result-bar" role="progressbar" aria-label={`${option}: ${percentage.toFixed(1)} percent`} aria-valuemin="0" aria-valuemax="100" aria-valuenow={Number(percentage.toFixed(1))}>
+                        <div className="result-bar" role="progressbar" aria-label={`${option.label}: ${percentage.toFixed(1)} percent`} aria-valuemin="0" aria-valuemax="100" aria-valuenow={Number(percentage.toFixed(1))}>
                           <span className={`result-bar__fill result-bar__fill--${index === 0 ? 'green' : 'blue'}`} style={{ width: `${percentage}%` }} />
                         </div>
                       </section>
@@ -134,12 +127,10 @@ export default function ResultsPage() {
                   })}
                 </div>
               )}
-
-              <p className="results-updated">Last updated: <time dateTime={results.lastUpdatedAt}>{formatUpdatedAt(results.lastUpdatedAt)}</time></p>
             </>
           )}
 
-          <div className="results-notice"><InfoIcon /><p>SAUTI YAGROUND is an independent voluntary opinion poll. Its results are not necessarily representative of Kenya's population.</p></div>
+          <div className="results-notice"><InfoIcon /><p>Only votes confirmed and recorded by the backend are included. SAUTI YAGROUND is an independent opinion poll and is not necessarily representative of Kenya's population.</p></div>
         </section>
       </main>
       <Footer />

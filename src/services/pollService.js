@@ -1,15 +1,12 @@
-import { requestBackend } from './apiClient.js'
+import { apiRequest } from './apiClient.js'
 
-/** Fetch public poll details from a future Firebase Cloud Function. */
-export function fetchPublicPollInfo(pollId) {
-  return requestBackend('getPublicPollInfo', { pollId })
+/** GET /api/polls/active returns { poll } from the backend. */
+export async function fetchPublicPollInfo() {
+  const { poll } = await apiRequest('/api/polls/active')
+  return poll
 }
 
-/**
- * Fetch server-provided aggregate results; only confirmed, recorded votes belong here.
- * Expected response: { pollId, question, counts: { WANTAM, TUTAM },
- * totalConfirmedVotes, lastUpdatedAt }.
- */
+/** GET /api/polls/:pollId/results returns backend-confirmed vote counts. */
 export function fetchPollResults(pollId) {
-  return requestBackend('getPollResults', { pollId })
+  return apiRequest(`/api/polls/${encodeURIComponent(pollId)}/results`)
 }

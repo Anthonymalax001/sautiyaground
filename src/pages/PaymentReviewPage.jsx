@@ -10,6 +10,10 @@ export default function PaymentReviewPage({ choice, phone, onStartPayment }) {
   const [starting, setStarting] = useState(false)
   const [error, setError] = useState('')
 
+  if (!validDetails) {
+    return <MissingStep message="Your review details are missing. Return to the poll and choose a response to continue." />
+  }
+
   const startPayment = async () => {
     if (!validDetails || starting) return
     setStarting(true)
@@ -17,18 +21,9 @@ export default function PaymentReviewPage({ choice, phone, onStartPayment }) {
     try {
       await onStartPayment()
     } catch (requestError) {
-      setError(requestError?.code === 'BACKEND_NOT_CONFIGURED'
-        ? 'M-Pesa is not connected yet. No payment request was sent.'
-        : requestError?.code === 'SESSION_UNAVAILABLE'
-          ? 'This browser cannot safely continue payment. No payment request was sent.'
-        : 'We could not confirm that a payment request was started. Check your phone before retrying. No vote has been submitted.')
-    } finally {
+      setError(requestError?.message || 'We could not start the Paystack checkout. Please try again.')
       setStarting(false)
     }
-  }
-
-  if (!validDetails) {
-    return <MissingStep message="Your review details are missing. Return to the poll and choose a response to continue." />
   }
 
   return (
@@ -39,7 +34,7 @@ export default function PaymentReviewPage({ choice, phone, onStartPayment }) {
         <div className="vote-intro">
           <p className="hero-kicker"><span className="hero-kicker__line" /> REVIEW DETAILS</p>
           <h1>Almost<br /><span>there.</span></h1>
-          <p className="hero-description">Check your response and fee before requesting an M-Pesa payment.</p>
+          <p className="hero-description">Check your response and fee before continuing to Paystack.</p>
         </div>
         <section className="vote-card review-card" aria-labelledby="review-heading">
           <div className="vote-card__header"><span className="eyebrow eyebrow--muted">PAYMENT REVIEW</span><span className="vote-card__step">Step 03 of 03</span></div>
@@ -51,7 +46,7 @@ export default function PaymentReviewPage({ choice, phone, onStartPayment }) {
           </dl>
           <button className="primary-button vote-continue" type="button" disabled={starting} onClick={startPayment}>
             {starting && <span className="loading-spinner loading-spinner--small" aria-hidden="true" />}
-            {starting ? 'Starting M-Pesa request' : 'Proceed to M-Pesa'} {!starting && <ArrowIcon />}
+            {starting ? 'Opening Paystack' : 'Proceed to Paystack'} {!starting && <ArrowIcon />}
           </button>
           {error && <p className="flow-error" role="alert">{error}</p>}
         </section>

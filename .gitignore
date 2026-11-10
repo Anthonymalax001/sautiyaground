@@ -52,3 +52,4 @@ Desktop.ini
 
 # Vite defaults
 dist-ssr/
+.neon

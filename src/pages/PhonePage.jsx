@@ -57,7 +57,7 @@ export default function PhonePage({ choice, phone: initialPhone, onContinue }) {
           <p className="phone-hint" id="phone-hint">Accepted formats include 07…, 01…, or +2547… / +2541…</p>
           <div className="fee-row"><span>Participation fee</span><strong>KES {APP_CONFIG.participationFee}</strong></div>
           <button className="primary-button vote-continue" type="submit">Continue <ArrowIcon /></button>
-          <div className="vote-disclaimer"><InfoIcon /><p>Your number is used to prepare the payment review. It is not sent to a server or used to submit a response.</p></div>
+          <div className="vote-disclaimer"><InfoIcon /><p>Your number is sent securely to prepare the Paystack payment. It is stored separately from your selected response.</p></div>
         </form>
       </main>
       <Footer />

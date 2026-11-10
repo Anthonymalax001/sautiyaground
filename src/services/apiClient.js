@@ -1,12 +1,11 @@
-/**
- * Temporary frontend transport placeholder for the backend API.
- * Connect the agreed HTTPS transport and endpoint contracts here when available.
- * This stub deliberately sends no network request and returns no sample data.
- */
-export async function requestBackend(operation, payload) {
-  void operation
-  void payload
-  const error = new Error('The backend API is not configured; no request was sent.')
-  error.code = 'BACKEND_NOT_CONFIGURED'
-  throw error
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? ''
+
+export async function apiRequest(path, options = {}) {
+  const response = await fetch(`${API_BASE}${path}`, {
+    ...options,
+    headers: { ...(options.body ? { 'Content-Type': 'application/json' } : {}), ...options.headers },
+  })
+  const result = await response.json().catch(() => ({}))
+  if (!response.ok) throw new Error(result.error || `Request failed (${response.status}).`)
+  return result
 }
