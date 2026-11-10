@@ -45,7 +45,11 @@ async function paystack(pathname, init = {}) {
     headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`, 'Content-Type': 'application/json', ...init.headers },
   })
   const result = await response.json().catch(() => ({}))
-  if (!response.ok || !result.status) throw Object.assign(new Error(result.message || 'Paystack request failed.'), { status: 502 })
+  if (!response.ok || !result.status) {
+    const error = Object.assign(new Error(result.message || 'Paystack request failed.'), { status: 502 })
+    error.response = { data: result, status: response.status }
+    throw error
+  }
   return result.data
 }
 
@@ -152,8 +156,11 @@ app.post('/api/payments/initiate', express.json({ limit: '16kb' }), async (req, 
   } catch (error) {
     await client.query('ROLLBACK').catch(() => {})
     if (reference) await pool.query("UPDATE payments SET status = 'failed', updated_at = now() WHERE provider_reference = $1 AND status = 'pending'", [reference]).catch(() => {})
-    console.error('Payment initiation failed:', error.message)
-    res.status(error.status ?? 502).json({ error: error.status === 502 ? 'Unable to initialize payment with Paystack.' : 'Unable to initiate payment.' })
+    console.error('Payment initiation failed:', error.message, error.response?.data)
+    res.status(error.status ?? 502).json({
+      error: error.status === 502 ? 'Unable to initialize payment with Paystack.' : 'Unable to initiate payment.',
+      ...(error.response?.data !== undefined ? { details: error.response.data } : {}),
+    })
   } finally { client.release() }
 })
 
