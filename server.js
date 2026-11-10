@@ -17,6 +17,22 @@ const port = Number(process.env.PORT) || 3000
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 5, ssl: { rejectUnauthorized: false } })
 const feeMinor = 1700
 
+const allowedOrigins = new Set(['http://localhost:5173', process.env.FRONTEND_URL].filter(Boolean))
+app.use((req, res, next) => {
+  const origin = req.headers.origin
+  if (allowedOrigins.has(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin)
+    res.setHeader('Access-Control-Allow-Credentials', 'true')
+    res.setHeader('Vary', 'Origin')
+  }
+  if (req.method === 'OPTIONS') {
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
+    res.setHeader('Access-Control-Allow-Headers', req.headers['access-control-request-headers'] || 'Content-Type, Authorization')
+    return res.sendStatus(204)
+  }
+  next()
+})
+
 if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is required.')
 if (!process.env.PAYSTACK_SECRET_KEY) throw new Error('PAYSTACK_SECRET_KEY is required.')
 if (!process.env.PAYSTACK_WEBHOOK_SECRET) throw new Error('PAYSTACK_WEBHOOK_SECRET is required.')
