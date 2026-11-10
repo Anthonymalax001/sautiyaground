@@ -1,10 +1,11 @@
-/**
- * Placeholder transport for Firebase Cloud Functions.
- * Replace this rejection with the configured Firebase Functions client/HTTPS
- * transport once the backend endpoints and app configuration are ready.
- * This stub intentionally sends no network request and returns no sample data.
- */
-export async function invokeCloudFunction(functionName, payload) {
-  void payload
-  throw new Error(`Firebase Cloud Functions are not configured; no request was sent (${functionName}).`)
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? ''
+
+export async function apiRequest(path, options = {}) {
+  const response = await fetch(`${API_BASE}${path}`, {
+    ...options,
+    headers: { ...(options.body ? { 'Content-Type': 'application/json' } : {}), ...options.headers },
+  })
+  const result = await response.json().catch(() => ({}))
+  if (!response.ok) throw new Error(result.error || `Request failed (${response.status}).`)
+  return result
 }

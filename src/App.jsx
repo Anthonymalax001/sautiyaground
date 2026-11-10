@@ -9,6 +9,7 @@ import PhonePage from './pages/PhonePage.jsx'
 import PolicyPage from './pages/PolicyPage.jsx'
 import ResultsPage from './pages/ResultsPage.jsx'
 import VotePage from './pages/VotePage.jsx'
+import { fetchPublicPollInfo } from './services/pollService.js'
 
 function useHashRoute() {
   const getRoute = () => window.location.hash.slice(1).split('?')[0] || '/'
@@ -26,7 +27,11 @@ function useHashRoute() {
 function App() {
   const route = useHashRoute()
   const [infoOpen, setInfoOpen] = useState(false)
-  const [flow, setFlow] = useState({ choice: '', phone: '' })
+  const [flow, setFlow] = useState(() => {
+    try { return JSON.parse(sessionStorage.getItem('sauti:flow') || '{"choice":"","phone":""}') }
+    catch { return { choice: '', phone: '' } }
+  })
+  const [activePoll, setActivePoll] = useState(null)
   const infoButtonRef = useRef(null)
 
   useEffect(() => {
@@ -34,13 +39,22 @@ function App() {
     document.title = `${APP_CONFIG.websiteName} — Your Voice. Your Opinion.`
   }, [route])
 
+  useEffect(() => {
+    fetchPublicPollInfo().then(setActivePoll).catch((error) => console.error('Unable to load active poll:', error.message))
+  }, [])
+
   const startVoting = () => {
     setFlow({ choice: '', phone: '' })
+    sessionStorage.removeItem('sauti:flow')
     window.location.hash = '#/vote'
   }
 
   const continueWithPhone = (phone) => {
-    setFlow((currentFlow) => ({ ...currentFlow, phone }))
+    setFlow((currentFlow) => {
+      const nextFlow = { ...currentFlow, phone }
+      sessionStorage.setItem('sauti:flow', JSON.stringify(nextFlow))
+      return nextFlow
+    })
     window.location.hash = '#/review'
   }
 
@@ -52,13 +66,13 @@ function App() {
   let page
   switch (route) {
     case '/vote':
-      page = <VotePage selection={flow.choice} setSelection={(choice) => setFlow((currentFlow) => ({ ...currentFlow, choice }))} />
+      page = <VotePage poll={activePoll} selection={flow.choice} setSelection={(choice) => setFlow((currentFlow) => ({ ...currentFlow, choice }))} />
       break
     case '/phone':
       page = <PhonePage choice={flow.choice} phone={flow.phone} onContinue={continueWithPhone} />
       break
     case '/review':
-      page = <PaymentReviewPage choice={flow.choice} phone={flow.phone} />
+      page = <PaymentReviewPage choice={flow.choice} phone={flow.phone} poll={activePoll} />
       break
     case '/results':
       page = <ResultsPage />

@@ -3,7 +3,8 @@ import { StepIndicator } from '../components/FlowUi.jsx'
 import { ArrowIcon, CheckIcon, InfoIcon } from '../components/Icons.jsx'
 import { Footer } from '../components/SiteChrome.jsx'
 
-export default function VotePage({ selection, setSelection }) {
+export default function VotePage({ selection, setSelection, poll }) {
+  const options = poll?.options?.length ? poll.options.map((option) => option.code) : APP_CONFIG.pollOptions
   const continueToPhone = () => {
     if (selection) window.location.hash = '#/phone'
   }
@@ -19,10 +20,10 @@ export default function VotePage({ selection, setSelection }) {
           <p className="hero-description">Choose the response that best reflects your view on this public issue.</p>
         </div>
         <section className="vote-card" aria-labelledby="vote-question">
-          <div className="vote-card__header"><span className="eyebrow eyebrow--muted">{APP_CONFIG.pollOptions.join(' vs ')}</span><span className="vote-card__step">Your response</span></div>
-          <h2 id="vote-question">Which perspective do you support?</h2>
+          <div className="vote-card__header"><span className="eyebrow eyebrow--muted">{options.join(' vs ')}</span><span className="vote-card__step">Your response</span></div>
+          <h2 id="vote-question">{poll?.question || 'Which perspective do you support?'}</h2>
           <div className="choice-list">
-            {APP_CONFIG.pollOptions.map((option, index) => (
+            {options.map((option, index) => (
               <button key={option} type="button" className={`choice-card${selection === option ? ' choice-card--selected' : ''}`} aria-pressed={selection === option} onClick={() => setSelection(option)}>
                 <span className={`choice-card__letter choice-card__letter--${index === 0 ? 'green' : 'blue'}`}>{String.fromCharCode(65 + index)}</span>
                 <span className="choice-card__name">{option}</span>

@@ -1,11 +1,10 @@
-import { invokeCloudFunction } from './apiClient.js'
+import { apiRequest } from './apiClient.js'
 
-/** Fetch public poll details from a future Firebase Cloud Function. */
-export function fetchPublicPollInfo(pollId) {
-  return invokeCloudFunction('getPublicPollInfo', { pollId })
+export async function fetchPublicPollInfo() {
+  const { poll } = await apiRequest('/api/polls/active')
+  return poll
 }
 
-/** Fetch server-provided results; only confirmed, recorded votes belong here. */
-export function fetchPollResults(pollId) {
-  return invokeCloudFunction('getPollResults', { pollId })
+export async function fetchPollResults(pollId) {
+  return apiRequest(`/api/polls/${encodeURIComponent(pollId)}/results`)
 }
