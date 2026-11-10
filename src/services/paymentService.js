@@ -1,9 +1,9 @@
 import { apiRequest } from './apiClient.js'
 
-export function startMpesaPayment({ pollId, optionId, phoneNumber }) {
+export function startMpesaPayment({ phone, optionLabel }) {
   return apiRequest('/api/payments/initiate', {
     method: 'POST',
-    body: JSON.stringify({ pollId, optionId, phoneNumber }),
+    body: JSON.stringify({ phone, optionLabel }),
   })
 }
 

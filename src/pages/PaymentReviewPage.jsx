@@ -6,7 +6,7 @@ import { Footer } from '../components/SiteChrome.jsx'
 import { KENYAN_MOBILE_PATTERN } from '../utils/phoneNumber.js'
 import { checkPaymentStatus, startMpesaPayment } from '../services/paymentService.js'
 
-export default function PaymentReviewPage({ choice, phone, poll }) {
+export default function PaymentReviewPage({ choice, phone }) {
   const validDetails = APP_CONFIG.pollOptions.includes(choice) && KENYAN_MOBILE_PATTERN.test(phone)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -43,8 +43,7 @@ export default function PaymentReviewPage({ choice, phone, poll }) {
     setBusy(true)
     setError('')
     try {
-      const optionId = poll?.options?.find((option) => option.code === choice)?.id ?? APP_CONFIG.pollOptionIds[choice]
-      const result = await startMpesaPayment({ pollId: poll?.id ?? APP_CONFIG.pollId, optionId, phoneNumber: phone })
+      const result = await startMpesaPayment({ phone, optionLabel: choice })
       const paymentDetails = { paymentId: result.paymentId, statusToken: result.statusToken }
       sessionStorage.setItem('sauti:flow', JSON.stringify({ choice, phone }))
       sessionStorage.setItem('sauti:payment', JSON.stringify(paymentDetails))

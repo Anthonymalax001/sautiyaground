@@ -45,7 +45,7 @@ Returns the current active poll with options.
 
 ### `POST /api/payments/initiate`
 
-Accepts `{ "pollId": "uuid", "optionId": "uuid", "phoneNumber": "0712345678" }`. The phone is normalized to E.164. The server checks the active poll and option, rejects a participant who already voted or has a pending payment, creates a pending payment for exactly 1700 minor units, and initializes Paystack checkout with KES and only the `mobile_money` channel.
+Accepts `{ "phone": "0712345678", "optionLabel": "WANTAM" }` where `optionLabel` is `WANTAM` or `TUTAM`. The server selects the active poll, looks up that label in its options, normalizes the phone to E.164, rejects a participant who already voted or has a pending payment, creates a pending payment for exactly 1700 minor units, and initializes Paystack checkout with KES and only the `mobile_money` channel.
 
 Success (`201`): `{ "paymentId": "uuid", "statusToken": "opaque-secret", "status": "pending", "authorizationUrl": "https://checkout.paystack.com/...", "reference": "sg-..." }`. The frontend must keep `statusToken` private and send it only to the status endpoint. Redirect the user to `authorizationUrl`. A successful response does not mean payment has completed.
 

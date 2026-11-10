@@ -72,7 +72,7 @@ function App() {
       page = <PhonePage choice={flow.choice} phone={flow.phone} onContinue={continueWithPhone} />
       break
     case '/review':
-      page = <PaymentReviewPage choice={flow.choice} phone={flow.phone} poll={activePoll} />
+      page = <PaymentReviewPage choice={flow.choice} phone={flow.phone} />
       break
     case '/results':
       page = <ResultsPage />

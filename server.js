@@ -93,18 +93,25 @@ app.get('/api/polls/active', async (_req, res) => {
 })
 
 app.post('/api/payments/initiate', express.json({ limit: '16kb' }), async (req, res) => {
-  const { pollId, optionId, phoneNumber } = req.body ?? {}
-  if (!pollId || !optionId || !phoneNumber) return res.status(400).json({ error: 'pollId, optionId and phoneNumber are required.' })
+  const { phone: phoneInput, optionLabel } = req.body ?? {}
+  if (!phoneInput || !['WANTAM', 'TUTAM'].includes(optionLabel)) {
+    return res.status(400).json({ error: 'phone and optionLabel (WANTAM or TUTAM) are required.' })
+  }
   let phone
-  try { phone = normalizePhone(phoneNumber) } catch (error) { return res.status(error.status ?? 400).json({ error: error.message }) }
+  try { phone = normalizePhone(phoneInput) } catch (error) { return res.status(error.status ?? 400).json({ error: error.message }) }
 
   const client = await pool.connect()
   let reference
   try {
-    const poll = await client.query(`SELECT id, participation_fee_minor FROM polls WHERE id = $1 AND is_active AND starts_at <= now() AND (ends_at IS NULL OR ends_at > now())`, [pollId])
-    if (!poll.rowCount) return res.status(404).json({ error: 'Active poll not found.' })
-    const option = await client.query('SELECT id, code FROM poll_options WHERE id = $1 AND poll_id = $2', [optionId, pollId])
-    if (!option.rowCount) return res.status(400).json({ error: 'Selected option does not belong to this poll.' })
+    const poll = await client.query(`
+      SELECT id, participation_fee_minor FROM polls
+      WHERE is_active AND starts_at <= now() AND (ends_at IS NULL OR ends_at > now())
+      ORDER BY created_at DESC LIMIT 1
+    `)
+    if (!poll.rowCount) return res.status(404).json({ error: 'No active poll.' })
+    const pollId = poll.rows[0].id
+    const option = await client.query('SELECT id, code FROM poll_options WHERE poll_id = $1 AND upper(label) = $2', [pollId, optionLabel])
+    if (!option.rowCount) return res.status(400).json({ error: 'Selected option is not available for the active poll.' })
 
     await client.query('BEGIN')
     const participant = await client.query(`
