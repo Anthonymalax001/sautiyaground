@@ -5,6 +5,10 @@ import { APP_CONFIG } from '../config/appConfig.js'
 import { fetchPollResults, fetchPublicPollInfo } from '../services/pollService.js'
 
 const RESULT_REFRESH_INTERVAL = 10000
+const CHART_COLORS = Object.freeze({
+  WANTAM: '#55adff',
+  TUTAM: '#f2c451',
+})
 
 function validateResults(data) {
   if (!data?.poll || typeof data.poll.id !== 'string' || !Array.isArray(data.results)) {
@@ -23,6 +27,66 @@ function validateResults(data) {
 
   if (data.results.length !== options.length) throw new Error('The results service returned unexpected poll options.')
   return { poll: data.poll, options }
+}
+
+function VoteDistributionChart({ options, total }) {
+  const byCode = Object.fromEntries(options.map((option) => [option.code, option]))
+  const wantamVotes = byCode.WANTAM.votes
+  const tutamVotes = byCode.TUTAM.votes
+  const wantamPercent = total > 0 ? (wantamVotes / total) * 100 : 0
+  const tutamPercent = total > 0 ? (tutamVotes / total) * 100 : 0
+  const radius = 105
+  const circumference = 2 * Math.PI * radius
+  const bothPresent = wantamPercent > 0 && tutamPercent > 0
+  const gap = bothPresent ? Math.min(13, circumference * Math.min(wantamPercent, tutamPercent) / 400) : 0
+  const wantamLength = Math.max(0, circumference * wantamPercent / 100 - (bothPresent ? 2 * gap : 0))
+  const tutamLength = Math.max(0, circumference * tutamPercent / 100 - (bothPresent ? 2 * gap : 0))
+  const wantamStart = bothPresent ? gap : 0
+  const tutamStart = circumference * wantamPercent / 100 + (bothPresent ? gap : 0)
+  const wantamLabel = `${wantamPercent.toFixed(1)}%`
+  const tutamLabel = `${tutamPercent.toFixed(1)}%`
+
+  return (
+    <div className="results-chart-wrap">
+      <div className="results-donut">
+        <svg className="results-donut__svg" viewBox="0 0 240 240" role="img" aria-labelledby="results-chart-title results-chart-description">
+          <title id="results-chart-title">Confirmed vote distribution</title>
+          <desc id="results-chart-description">WANTAM has {wantamLabel} with {wantamVotes.toLocaleString()} confirmed votes. TUTAM has {tutamLabel} with {tutamVotes.toLocaleString()} confirmed votes.</desc>
+          <circle className="results-donut__track" cx="120" cy="120" r={radius} />
+          {wantamLength > 0 && (
+            <circle
+              className="results-donut__segment results-donut__segment--wantam"
+              cx="120" cy="120" r={radius}
+              transform="rotate(-90 120 120)"
+              strokeDasharray={`${wantamLength} ${circumference}`}
+              strokeDashoffset={-wantamStart}
+              style={{ stroke: CHART_COLORS.WANTAM }}
+              strokeLinecap={wantamLength < 22 ? 'butt' : 'round'}
+            />
+          )}
+          {tutamLength > 0 && (
+            <circle
+              className="results-donut__segment results-donut__segment--tutam"
+              cx="120" cy="120" r={radius}
+              transform="rotate(-90 120 120)"
+              strokeDasharray={`${tutamLength} ${circumference}`}
+              strokeDashoffset={-tutamStart}
+              style={{ stroke: CHART_COLORS.TUTAM }}
+              strokeLinecap={tutamLength < 22 ? 'butt' : 'round'}
+            />
+          )}
+        </svg>
+        <div className="results-donut__center" aria-hidden="true">
+          <div className="results-donut__value results-donut__value--wantam">
+            <span><i />WANTAM</span><strong>{wantamLabel}</strong>
+          </div>
+          <div className="results-donut__value results-donut__value--tutam">
+            <span><i />TUTAM</span><strong>{tutamLabel}</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export default function ResultsPage() {
@@ -103,30 +167,33 @@ export default function ResultsPage() {
           {results && (
             <>
               {error && <div className="results-inline-error" role="status"><p>{error} Showing the last confirmed results received.</p><button className="secondary-button" type="button" onClick={() => void loadResults()} disabled={refreshing}>Try again</button></div>}
-              <div className="results-total"><span>Total confirmed votes</span><strong>{total.toLocaleString()}</strong></div>
-              {total === 0 ? (
-                <div className="results-empty" role="status">
-                  <p>No confirmed votes yet.</p>
-                  <span>Results appear after the backend verifies payment and records responses.</span>
-                </div>
-              ) : (
-                <div className="results-options">
-                  {results.options.map((option, index) => {
-                    const percentage = (option.votes / total) * 100
-                    return (
-                      <section className="result-option" key={option.id} aria-labelledby={`result-${option.code}`}>
-                        <div className="result-option__labels">
-                          <h2 id={`result-${option.code}`}>{option.label}</h2>
-                          <div><strong>{option.votes.toLocaleString()}</strong><span>{percentage.toFixed(1)}%</span></div>
-                        </div>
-                        <div className="result-bar" role="progressbar" aria-label={`${option.label}: ${percentage.toFixed(1)} percent`} aria-valuemin="0" aria-valuemax="100" aria-valuenow={Number(percentage.toFixed(1))}>
-                          <span className={`result-bar__fill result-bar__fill--${index === 0 ? 'green' : 'blue'}`} style={{ width: `${percentage}%` }} />
-                        </div>
-                      </section>
-                    )
-                  })}
-                </div>
-              )}
+
+              <div className="results-total">
+                <span>Total confirmed votes</span>
+                <strong>{total.toLocaleString()}</strong>
+              </div>
+
+              <VoteDistributionChart options={results.options} total={total} />
+
+              {total === 0 && <div className="results-empty" role="status"><p>No confirmed votes yet.</p><span>Percentages remain at 0.0% until the backend records confirmed votes.</span></div>}
+
+              <section className="results-summary-grid" aria-label="Confirmed results by option">
+                {results.options.map((option) => {
+                  const percentage = total > 0 ? (option.votes / total) * 100 : 0
+                  return (
+                    <article className={`results-summary-card results-summary-card--${option.code.toLowerCase()}`} key={option.id} aria-labelledby={`result-${option.code}`}>
+                      <div className="results-summary-card__heading">
+                        <span className="results-summary-card__dot" aria-hidden="true" />
+                        <h2 id={`result-${option.code}`}>{option.label}</h2>
+                      </div>
+                      <div className="results-summary-card__metrics">
+                        <div><span>Confirmed votes</span><strong>{option.votes.toLocaleString()}</strong></div>
+                        <div><span>Share</span><strong>{percentage.toFixed(1)}%</strong></div>
+                      </div>
+                    </article>
+                  )
+                })}
+              </section>
             </>
           )}
 
