@@ -4,7 +4,7 @@ Express serves the existing Vite build and the JSON API. Local Vite development 
 
 ## Development database
 
-Create/select a dedicated Neon development branch/database named `sauti-dev`. Set its pooled URL in `DATABASE_URL` and direct URL in `DATABASE_URL_UNPOOLED`. Do not use the production connection for migration or testing. The migration runner refuses to run unless `NEON_BRANCH=sauti-dev`, requires a direct connection, and only loads `.env.development.local`. The local API also loads only `.env.development.local`; production deployments must inject their environment variables through the host.
+Create/select a dedicated Neon development branch/database named `sauti-dev`. Set its pooled URL in `DATABASE_URL` and direct URL in `DATABASE_URL_UNPOOLED`. Do not use the production connection for migration or testing. The migration runner refuses to run unless `NEON_BRANCH=sauti-dev`, requires a direct connection, and only loads `.env.development.local`. The local API loads `.env` first and uses `.env.development.local` as a fallback; `.env.local` is never loaded. Production deployments must inject their environment variables through the host.
 
 Copy `.env.example` to `.env.development.local`, fill in development-only values, then run:
 

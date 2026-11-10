@@ -6,6 +6,7 @@ import express from 'express'
 import pg from 'pg'
 
 const root = path.dirname(fileURLToPath(import.meta.url))
+dotenv.config({ path: path.join(root, '.env') })
 dotenv.config({ path: path.join(root, '.env.development.local') })
 
 const { Pool } = pg
