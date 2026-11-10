@@ -39,6 +39,10 @@ function normalizePhone(value) {
   throw Object.assign(new Error('Enter a valid Kenyan mobile number.'), { status: 400 })
 }
 
+function isValidEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[a-z\d-]{2,}$/i.test(value)
+}
+
 async function paystack(pathname, init = {}) {
   const response = await fetch(`https://api.paystack.co${pathname}`, {
     ...init,
@@ -103,6 +107,9 @@ app.post('/api/payments/initiate', express.json({ limit: '16kb' }), async (req, 
   }
   let phone
   try { phone = normalizePhone(phoneInput) } catch (error) { return res.status(error.status ?? 400).json({ error: error.message }) }
+  const suppliedEmail = typeof req.body?.email === 'string' ? req.body.email.trim() : ''
+  if (suppliedEmail && !isValidEmail(suppliedEmail)) return res.status(400).json({ error: 'email must be a valid email address.' })
+  const email = suppliedEmail || `${phone.replace(/\D/g, '')}@example.com`
 
   const client = await pool.connect()
   let reference
@@ -145,7 +152,7 @@ app.post('/api/payments/initiate', express.json({ limit: '16kb' }), async (req, 
     const checkout = await paystack('/transaction/initialize', {
       method: 'POST',
       body: JSON.stringify({
-        email: `${phone.slice(1)}@phone.sautiyaground.invalid`,
+        email,
         amount: String(feeMinor), currency: 'KES', reference,
         channels: ['mobile_money'],
         metadata: { payment_id: paymentId, poll_id: pollId, option_code: option.rows[0].code },
