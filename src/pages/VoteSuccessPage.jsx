@@ -58,7 +58,7 @@ export default function VoteSuccessPage({ confirmationReference, checkVoteStatus
 
           {confirmed ? (
             <>
-              <p className="policy-lead">The backend has authoritatively confirmed that your vote was recorded. Thank you for taking part.</p>
+              <p className="policy-lead"> Your payment was confirmed and your vote was recorded. Thank you for taking part.</p>
               <a className="primary-button policy-button" href="#/results">View poll results <ArrowIcon /></a>
             </>
           ) : (
