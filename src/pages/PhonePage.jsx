@@ -3,7 +3,7 @@ import { APP_CONFIG } from '../config/appConfig.js'
 import { MissingStep, StepIndicator } from '../components/FlowUi.jsx'
 import { ArrowIcon, InfoIcon } from '../components/Icons.jsx'
 import { Footer } from '../components/SiteChrome.jsx'
-import { normalizeKenyanPhone } from '../utils/phoneNumber.js'
+import { isKenyanPhoneInputWithinLimit, normalizeKenyanPhone } from '../utils/phoneNumber.js'
 
 export default function PhonePage({ choice, phone: initialPhone, onContinue }) {
   const [phone, setPhone] = useState(initialPhone)
@@ -11,12 +11,23 @@ export default function PhonePage({ choice, phone: initialPhone, onContinue }) {
 
   const submitPhone = (event) => {
     event.preventDefault()
+    if (error) return
     const result = normalizeKenyanPhone(phone)
     if (result.error) {
       setError(result.error)
       return
     }
     onContinue(result.value)
+  }
+
+  const handlePhoneChange = (event) => {
+    const nextPhone = event.target.value
+    if (!isKenyanPhoneInputWithinLimit(nextPhone)) {
+      setError('A local Kenyan number can have at most 10 digits. Use a valid +254 international format if needed.')
+      return
+    }
+    setPhone(nextPhone)
+    if (error) setError('')
   }
 
   if (!APP_CONFIG.pollOptions.includes(choice)) {
@@ -44,13 +55,13 @@ export default function PhonePage({ choice, phone: initialPhone, onContinue }) {
               name="phone"
               type="tel"
               required
-              inputMode="tel"
+              inputMode="numeric"
               autoComplete="tel"
               aria-describedby={error ? 'phone-error phone-hint' : 'phone-hint'}
               aria-invalid={Boolean(error)}
               placeholder="0712 345 678"
               value={phone}
-              onChange={(event) => { setPhone(event.target.value); if (error) setError('') }}
+              onChange={handlePhoneChange}
             />
           </div>
           {error && <p className="phone-error" id="phone-error" role="alert">{error}</p>}
