@@ -451,6 +451,57 @@
 .info-dialog > a { display: inline-flex; align-items: center; gap: 8px; margin-top: 10px; color: #77ddc0; font-size: 11px; font-weight: 650; text-decoration: none; }
 .info-dialog > a:hover { color: #a8f3d5; }
 
+/* Payment, vote confirmation and live result states */
+.status-page { max-width: 800px; }
+.status-card { margin-top: 28px; }
+.status-card > h1 { max-width: 700px; font-size: clamp(36px, 5.5vw, 58px); line-height: 1.08; }
+.status-card > .policy-lead { margin: 18px 0 0; color: #c4d6dc; font-size: 15px; line-height: 1.75; }
+.status-card__mark { display: flex; min-height: 58px; align-items: center; margin-top: 27px; }
+.status-mark { display: grid; width: 46px; height: 46px; place-items: center; border: 1px solid currentColor; border-radius: 50%; font-size: 24px; font-weight: 750; }
+.status-mark--success { color: #77e5b5; background: rgba(63, 218, 154, .09); }
+.status-mark--error { color: #ffaaa9; background: rgba(255, 106, 111, .08); }
+.status-mark--warning { color: #ffd48a; background: rgba(232, 186, 94, .08); }
+.status-card__hint { margin: 17px 0 0; color: #92aab7; font-size: 12px; line-height: 1.65; }
+.status-card__actions { display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 24px; }
+.status-card__actions .primary-button, .status-card__actions .secondary-button { width: 100%; }
+.secondary-button { display: flex; min-height: 44px; align-items: center; justify-content: center; gap: 9px; padding: 10px 16px; color: #b9d1d9; border: 1px solid rgba(134, 184, 201, .24); border-radius: 10px; background: rgba(8, 21, 34, .72); cursor: pointer; font: inherit; font-size: 11px; font-weight: 700; transition: border-color .16s ease, background .16s ease; }
+.secondary-button:hover:not(:disabled) { border-color: rgba(103, 227, 184, .55); background: rgba(43, 106, 100, .14); }
+.secondary-button:focus-visible { outline: 2px solid #8bdcf2; outline-offset: 3px; }
+.secondary-button:disabled { opacity: .65; cursor: wait; }
+.flow-error { margin: 12px 0 0; padding: 12px 13px; color: #ffc0b9; border: 1px solid rgba(255, 130, 132, .27); border-radius: 9px; background: rgba(166, 56, 65, .09); font-size: 11px; line-height: 1.65; }
+.loading-spinner { display: inline-block; width: 29px; height: 29px; flex: 0 0 auto; border: 3px solid rgba(130, 182, 194, .2); border-top-color: #67deb3; border-radius: 50%; animation: spin .8s linear infinite; }
+.loading-spinner--small { width: 15px; height: 15px; border-width: 2px; }
+.primary-button .loading-spinner { border-color: rgba(8, 40, 39, .2); border-top-color: #123c37; }
+.vote-confirmation-details { margin-top: 24px; }
+.status-card .vote-disclaimer { margin-top: 24px; }
+.results-card__header { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; }
+.results-card__header h1 { margin-top: 14px; }
+.results-refresh { display: inline-flex; align-items: center; gap: 8px; flex: 0 0 auto; padding-bottom: 5px; color: #8fa7b3; font-size: 10px; }
+.results-total { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-top: 28px; padding: 19px 0; border-top: 1px solid rgba(177, 202, 218, .1); border-bottom: 1px solid rgba(177, 202, 218, .1); color: #9eb2bd; font-size: 12px; }
+.results-total strong { color: #eff5f6; font-size: clamp(26px, 5vw, 36px); font-weight: 750; letter-spacing: -.04em; }
+.results-options { display: grid; gap: 23px; margin-top: 26px; }
+.result-option__labels { display: flex; align-items: center; justify-content: space-between; gap: 15px; margin-bottom: 11px; }
+.result-option__labels h2 { margin: 0; color: #eaf3f4; font-size: 14px; font-weight: 750; letter-spacing: .07em; }
+.result-option__labels > div { display: flex; align-items: baseline; gap: 13px; color: #95aab6; font-size: 11px; }
+.result-option__labels strong { color: #e7f0f2; font-size: 13px; }
+.result-option__labels span { min-width: 50px; color: #a8bbc5; text-align: right; }
+.result-bar { height: 11px; overflow: hidden; border: 1px solid rgba(158, 191, 207, .14); border-radius: 999px; background: rgba(5, 16, 27, .8); }
+.result-bar__fill { display: block; height: 100%; min-width: 0; border-radius: inherit; transition: width .35s ease; }
+.result-bar__fill--green { background: linear-gradient(90deg, #43d99a, #59d9b1); box-shadow: 0 0 20px rgba(64, 226, 160, .19); }
+.result-bar__fill--blue { background: linear-gradient(90deg, #58badf, #70b9f0); box-shadow: 0 0 20px rgba(101, 185, 255, .17); }
+.results-updated { margin: 23px 0 0; color: #8299a6; font-size: 10px; }
+.results-empty, .results-state { display: flex; min-height: 145px; flex-direction: column; align-items: center; justify-content: center; gap: 12px; margin-top: 22px; padding: 23px; color: #a1b4be; border: 1px solid rgba(160, 191, 212, .14); border-radius: 13px; background: rgba(7, 19, 32, .45); text-align: center; }
+.results-empty p, .results-state p { margin: 0; color: #e1ebed; font-size: 15px; font-weight: 650; }
+.results-empty span { max-width: 480px; color: #94aab6; font-size: 11px; line-height: 1.65; }
+.results-state--error { min-height: 130px; border-color: rgba(255, 130, 132, .18); }
+.results-state--error p { color: #ffc0b9; font-size: 12px; font-weight: 500; line-height: 1.65; }
+.results-inline-error { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin: 18px 0 0; padding: 11px 13px; color: #ffd48a; border: 1px solid rgba(232, 186, 94, .2); border-radius: 9px; background: rgba(201, 140, 49, .07); font-size: 10px; line-height: 1.6; }
+.results-inline-error p { margin: 0; }
+.results-inline-error .secondary-button { min-height: 38px; flex: 0 0 auto; }
+.results-page .results-notice { margin-top: 25px; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 
 @media (min-width: 1400px) {
@@ -500,6 +551,10 @@
   .vote-card { grid-column: 1; grid-row: 4; padding: 21px; }
   .policy-card { margin-top: 25px; padding: 26px 22px; }
   .info-dialog { padding: 29px 24px 24px; }
+  .status-card { padding: 27px 22px; }
+  .results-card__header { align-items: flex-start; flex-direction: column; gap: 9px; }
+  .results-refresh { padding-bottom: 0; }
+  .results-inline-error { align-items: stretch; flex-direction: column; }
 }
 
 @media (max-width: 390px) {

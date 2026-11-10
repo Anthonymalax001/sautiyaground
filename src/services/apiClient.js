@@ -1,10 +1,12 @@
 /**
- * Placeholder transport for Firebase Cloud Functions.
- * Replace this rejection with the configured Firebase Functions client/HTTPS
- * transport once the backend endpoints and app configuration are ready.
- * This stub intentionally sends no network request and returns no sample data.
+ * Temporary frontend transport placeholder for the backend API.
+ * Connect the agreed HTTPS transport and endpoint contracts here when available.
+ * This stub deliberately sends no network request and returns no sample data.
  */
-export async function invokeCloudFunction(functionName, payload) {
+export async function requestBackend(operation, payload) {
+  void operation
   void payload
-  throw new Error(`Firebase Cloud Functions are not configured; no request was sent (${functionName}).`)
+  const error = new Error('The backend API is not configured; no request was sent.')
+  error.code = 'BACKEND_NOT_CONFIGURED'
+  throw error
 }
