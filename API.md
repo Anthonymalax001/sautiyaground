@@ -14,9 +14,9 @@ npm run db:migrate
 
 This applies `db/migrations/001_initial_schema.sql` and the deterministic initial poll seed in `db/seeds/001_initial_poll.sql`. The seed creates the initial `WANTAM` and `TUTAM` poll. The SQL migration is the schema source of truth.
 
-For the application, set `DATABASE_URL`, `PAYSTACK_SECRET_KEY`, `PAYSTACK_WEBHOOK_SECRET`, and a random `PAYMENT_TOKEN_SECRET` (at least 32 characters) in the deployment's server environment. Keep all secrets out of `VITE_*` variables and Git. Use Paystack test credentials for development and configure the webhook URL as `POST /api/payments/callback`. The API supports the legacy `x-paystack-signature` HMAC and the current `Paystack-Signature` format, including its five-minute timestamp window. The raw request body is signed and compared before processing.
+For Render, set `DATABASE_URL`, `PAYSTACK_SECRET_KEY`, `PAYSTACK_WEBHOOK_SECRET`, a random `PAYMENT_TOKEN_SECRET` (at least 32 characters), and `FRONTEND_URL` in the service environment. Render supplies `RENDER_EXTERNAL_URL` for the backend service. Keep secrets out of `VITE_*` variables and Git. Configure the webhook URL as `POST https://<render-service>/api/payments/callback`. The API supports the legacy `x-paystack-signature` HMAC and the current `Paystack-Signature` format, including its five-minute timestamp window. The raw request body is signed and compared before processing.
 
-Paystack's Kenya mobile-money flow uses its hosted checkout with the `mobile_money` channel; the customer completes the Safaricom prompt there. Configure `PAYSTACK_CALLBACK_URL` as the public URL to return to after checkout (for this hash-routed frontend, end it in `#/review`). The frontend keeps the payment status token and flow details in session storage so it can poll payment status after the redirect. A webhook event is not trusted by itself: the server fetches the transaction from Paystack and checks reference, successful status, KES currency, and exactly KES 17 before recording a vote.
+Paystack's Kenya mobile-money flow uses its hosted checkout with the `mobile_money` channel; the customer completes the Safaricom prompt there. On Render, the transaction callback URL is built from `RENDER_EXTERNAL_URL` and points to `/api/payments/return`. That browser return verifies the transaction with Paystack, records the vote through the same guarded logic, then redirects to `${FRONTEND_URL}/success?reference=REFERENCE`. The webhook route remains server-to-server, verifies its signature and transaction, records the vote idempotently, then returns `200` to Paystack. Both flows share duplicate-vote protection.
 
 ## API
 
@@ -52,6 +52,10 @@ Success (`201`): `{ "paymentId": "uuid", "statusToken": "opaque-secret", "status
 ### `POST /api/payments/callback`
 
 Paystack webhook. The route validates the signature on the exact raw body, accepts `charge.success`, de-duplicates the event by a stable SHA-256 key, verifies the reference using Paystack's verify API, and records payment success and at most one vote in a database transaction. Duplicate deliveries return `200` without a second vote. Configure this URL in Paystack; do not call it from the browser.
+
+### `GET /api/payments/return?reference=sg-...`
+
+Browser return URL supplied to Paystack checkout on Render. The server verifies the reference directly with Paystack and runs the same guarded vote recording logic before redirecting to `${FRONTEND_URL}/success?reference=REFERENCE`. It is separate from the signed webhook route, which must continue returning `200` to Paystack.
 
 ### `GET /api/payments/:paymentId/status`
 

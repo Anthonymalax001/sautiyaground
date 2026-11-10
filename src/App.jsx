@@ -5,6 +5,7 @@ import { Header, InfoDialog } from './components/SiteChrome.jsx'
 import { APP_CONFIG } from './config/appConfig.js'
 import LandingPage from './pages/LandingPage.jsx'
 import PaymentReviewPage from './pages/PaymentReviewPage.jsx'
+import PaymentSuccessPage from './pages/PaymentSuccessPage.jsx'
 import PhonePage from './pages/PhonePage.jsx'
 import PolicyPage from './pages/PolicyPage.jsx'
 import ResultsPage from './pages/ResultsPage.jsx'
@@ -12,7 +13,10 @@ import VotePage from './pages/VotePage.jsx'
 import { fetchPublicPollInfo } from './services/pollService.js'
 
 function useHashRoute() {
-  const getRoute = () => window.location.hash.slice(1).split('?')[0] || '/'
+  const getRoute = () => {
+    if (window.location.pathname.replace(/\/$/, '') === '/success') return '/success'
+    return window.location.hash.slice(1).split('?')[0] || '/'
+  }
   const [route, setRoute] = useState(getRoute)
 
   useEffect(() => {
@@ -73,6 +77,9 @@ function App() {
       break
     case '/review':
       page = <PaymentReviewPage choice={flow.choice} phone={flow.phone} />
+      break
+    case '/success':
+      page = <PaymentSuccessPage />
       break
     case '/results':
       page = <ResultsPage />

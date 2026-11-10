@@ -6,8 +6,10 @@ import express from 'express'
 import pg from 'pg'
 
 const root = path.dirname(fileURLToPath(import.meta.url))
+const inheritedEnvironment = { ...process.env }
 dotenv.config({ path: path.join(root, '.env') })
 dotenv.config({ path: path.join(root, '.env.development.local'), override: true })
+Object.assign(process.env, inheritedEnvironment)
 
 const { Pool } = pg
 const app = express()
@@ -20,6 +22,9 @@ if (!process.env.PAYSTACK_SECRET_KEY) throw new Error('PAYSTACK_SECRET_KEY is re
 if (!process.env.PAYSTACK_WEBHOOK_SECRET) throw new Error('PAYSTACK_WEBHOOK_SECRET is required.')
 if (!process.env.PAYMENT_TOKEN_SECRET || process.env.PAYMENT_TOKEN_SECRET.length < 32) {
   throw new Error('PAYMENT_TOKEN_SECRET must be at least 32 characters.')
+}
+if (process.env.RENDER === 'true' && !process.env.FRONTEND_URL) {
+  throw new Error('FRONTEND_URL is required on Render.')
 }
 
 function safeEqualHex(actual, expected) {
@@ -156,7 +161,7 @@ app.post('/api/payments/initiate', express.json({ limit: '16kb' }), async (req, 
         amount: String(feeMinor), currency: 'KES', reference,
         channels: ['mobile_money'],
         metadata: { payment_id: paymentId, poll_id: pollId, option_code: option.rows[0].code },
-        ...(process.env.PAYSTACK_CALLBACK_URL ? { callback_url: process.env.PAYSTACK_CALLBACK_URL } : {}),
+        ...(process.env.RENDER_EXTERNAL_URL ? { callback_url: `${process.env.RENDER_EXTERNAL_URL.replace(/\/$/, '')}/api/payments/return` } : {}),
       }),
     })
     res.status(201).json({ paymentId, statusToken: token, status: 'pending', authorizationUrl: checkout.authorization_url, reference })
@@ -212,6 +217,37 @@ app.post('/api/payments/callback', express.raw({ type: 'application/json', limit
     await client.query('ROLLBACK').catch(() => {})
     console.error('Paystack callback processing failed:', error.message)
     res.sendStatus(500)
+  } finally { client.release() }
+})
+
+// Paystack webhooks are server-to-server and must receive a 2xx response.
+// The customer's browser returns here separately, where we verify before redirecting.
+app.get('/api/payments/return', async (req, res) => {
+  const reference = typeof req.query.reference === 'string' ? req.query.reference : ''
+  if (!/^sg-[a-f\d-]{36}$/i.test(reference)) return res.status(400).json({ error: 'A valid payment reference is required.' })
+  if (!process.env.FRONTEND_URL) return res.status(503).json({ error: 'FRONTEND_URL is not configured.' })
+
+  const client = await pool.connect()
+  try {
+    const verified = await paystack(`/transaction/verify/${encodeURIComponent(reference)}`)
+    if (verified.status !== 'success') return res.status(409).json({ error: 'Payment has not succeeded.', status: verified.status })
+    await client.query('BEGIN')
+    const payment = await client.query('SELECT id FROM payments WHERE provider_reference = $1', [reference])
+    if (!payment.rowCount) {
+      await client.query('ROLLBACK')
+      return res.status(404).json({ error: 'Payment not found.' })
+    }
+    const result = await recordVoteForPayment(client, payment.rows[0].id, verified)
+    await client.query('COMMIT')
+    if (!['vote_recorded', 'already_processed', 'already_voted'].includes(result)) {
+      return res.status(409).json({ error: 'Payment verification could not be completed.', result })
+    }
+    const frontendUrl = process.env.FRONTEND_URL.replace(/\/$/, '')
+    return res.redirect(303, `${frontendUrl}/success?reference=${encodeURIComponent(reference)}`)
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {})
+    console.error('Paystack browser return failed:', error.message)
+    return res.status(error.status ?? 500).json({ error: 'Unable to verify payment return.' })
   } finally { client.release() }
 })
 
